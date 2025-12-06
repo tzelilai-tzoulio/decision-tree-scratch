@@ -44,7 +44,7 @@ class DecisionTree:
             raise ValueError("X contains non-numeric data. Convert or encode it first.")
         
     
-    def check_columns(self, X):
+    def _identify_columns(self, X):
         
         m,n = X.shape
         cat = []
