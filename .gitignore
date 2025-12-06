@@ -3,3 +3,4 @@
 __pycache__
 decision_tree.ipynb
 data
+.gitignore
