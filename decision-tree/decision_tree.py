@@ -53,6 +53,7 @@ class DecisionTree:
         # Check if column is categorical or numerical 
         # based on unique values 
         for i in range(n):
+            # > 2 => Numerical because we have only binary categorical values 
             if len(np.unique(X[:, i])) > 2: 
                 num.append(i)
             
@@ -62,3 +63,13 @@ class DecisionTree:
         return num, cat
         
 
+    def _cal_cat_entropy(self, y, indices): 
+
+        subset = y[indices]
+
+        # Measure populatrity of each unique target value 
+        _, counts = np.unique(subset, return_counts=True)
+        p = counts / counts.sum()
+
+        return -(p * np.log2(p)).sum()
+        
