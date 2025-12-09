@@ -73,3 +73,20 @@ class DecisionTree:
 
         return -(p * np.log2(p)).sum()
         
+    
+    def _cal_info_gain(self, X, y, feature, indices):
+        # Assuming 0 values -> left 
+        #          1 values -> right
+
+        left_indices = X[indices,feature] == 0
+        right_indices = X[indices,feature] == 1
+
+        H_parent = self._cal_cat_entropy(y, indices)
+        H_left = self._cal_cat_entropy(y, left_indices)
+        H_right = self._cal_cat_entropy(y, right_indices)
+
+        w_left = left_indices.sum()/len(indices)
+        w_right = right_indices.sum()/len(indices)
+
+        return H_parent - (w_left*H_left + w_right*H_right)
+    
