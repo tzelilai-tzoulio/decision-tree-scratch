@@ -181,9 +181,13 @@ class DecisionTree:
     def build_tree(self, X, y, indices, available_features, node):
         # Terminating Conditions 
 
-        # 1. Pure Node 
         values = np.unique(y[indices])
+
+        # 1. No values 
+        if len(values) == 0: 
+            return 
         
+        # 2. Pure Node 
         if len(values) == 1:
             node.value = values[0]
             return
@@ -228,16 +232,18 @@ class DecisionTree:
         node.left_node = Node()
         node.right_node = Node()
 
-        left_indices = X[:, feature] == 0 
-        right_indices = X[:, feature] == 1
+        left_indices = X[:, best_feature] == 0 
+        right_indices = X[:, best_feature] == 1
 
         left_indices = left_indices & indices
         right_indices = right_indices & indices
 
         print("Left Tree")
+        print("indices            :", indices)
         print("left_indices       :", left_indices) 
         self.build_tree(X, y, indices=left_indices, available_features=available_features.copy(), node=node.left_node)
     
         print("Right Tree")
+        print("indices            :", indices)
         print("right_indices      :", right_indices)
         self.build_tree(X, y, indices=right_indices, available_features=available_features.copy(), node=node.right_node)
