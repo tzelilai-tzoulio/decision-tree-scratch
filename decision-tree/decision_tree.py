@@ -13,6 +13,7 @@ class DecisionTree:
             raise TypeError("impurity_metric is not valid. Choose gini or entropy")
         
         self.max_depth = max_depth
+        self.current_depth = 0 
         self.root_node = None 
     
     def _validate_input(self, X, y):
@@ -43,7 +44,6 @@ class DecisionTree:
         if not np.issubdtype(X.dtype, np.number):
             raise ValueError("X contains non-numeric data. Convert or encode it first.")
         
-    
     def _identify_columns(self, X):
         
         m,n = X.shape
@@ -62,7 +62,6 @@ class DecisionTree:
 
         return num, cat
         
-
     def _cal_cat_entropy(self, y, indices): 
 
         subset = y[indices]
@@ -73,7 +72,6 @@ class DecisionTree:
 
         return -(p * np.log2(p)).sum()
         
-    
     def _cal_info_gain(self, X, y, feature, indices):
         # Assuming 0 values -> left 
         #          1 values -> right
@@ -93,27 +91,6 @@ class DecisionTree:
 
         return H_parent - (w_left*H_left + w_right*H_right)
     
-
-    def train(self, X, y): 
-        # Validate training data 
-        self._validate_input(X,y)
-
-        m,n = X.shape
-        starting_indices = [True for i in range(m)]
-        available_features = [i for i in range(n)]
-        root_node = Node() 
-
-        # start building the Tree
-        print("Start building the Tree")
-        self.build_tree(X, y, indices=starting_indices, available_features=available_features, node=root_node)
-        self.root_node = root_node
-
-
-    def print_tree(self):
-        lines, *_ = self._display_aux(self.root_node)
-        for line in lines:
-            print(line)
-
     def _display_aux(self, node):
         """Returns list of strings, width, height, and horizontal coordinate of the root."""
         if node is None:
@@ -179,19 +156,26 @@ class DecisionTree:
 
     def _find_best_split(self, X, y, indices, available_features):
         max_info_gain = 0
-        best_feature = None 
+        best_feature = None
 
-        # Find best feature for current Node 
-        for feature in available_features: 
-            info_gain = self._cal_info_gain(X, y, feature, indices = indices)
+        for feature in available_features:
+            # Compute child indices for THIS node only
+            left_indices = (X[:, feature] == 0) & indices
+            right_indices = (X[:, feature] == 1) & indices
 
-            if info_gain > max_info_gain: 
+            # Skip invalid splits (empty child)
+            if not np.any(left_indices) or not np.any(right_indices):
+                continue
+
+            # Compute information gain only for valid splits
+            info_gain = self._cal_info_gain(X, y, feature, indices)
+
+            if info_gain > max_info_gain:
                 max_info_gain = info_gain
-                best_feature = feature 
+                best_feature = feature
 
         return max_info_gain, best_feature
     
-
     def _most_frequent_element(self, x): 
         # Get unique values and their counts
             unique_vals, counts = np.unique(x, return_counts=True)
@@ -204,52 +188,59 @@ class DecisionTree:
 
             return most_frequent_element
     
-
-    def build_tree(self, X, y, indices, available_features, node):
+    def build_tree(self, X, y, indices, available_features, node, current_depth = 0):
         
         values = np.unique(y[indices])
-        if len(values) == 0: 
-            return 
-        
-        # 2. Pure Node 
-        if len(values) == 1:
-            node.value = values[0]
-            return
 
-        # 2. Available Features 
-            
         # Find best feature for current Node 
         max_info_gain, best_feature = self._find_best_split(X, y, indices, available_features)
 
-        # No information gain from any feature
-        if len(available_features) == 0 or max_info_gain == 0: 
-            node.value = self.most_frequent_element(y[indices])
+        # 1. Pure Node 
+        if len(values) == 1:
+            node.value = values[0]
             return
+        
+        # 2. No information gain from any feature
+        if len(available_features) == 0 or max_info_gain <= 0 or current_depth == self.max_depth: 
+            node.value = self._most_frequent_element(y[indices])
+            return
+        
+        # Creating available features for children nodes
+        child_features = [
+            f for f in available_features if f != best_feature
+        ]
 
-        # Removing used feature from the list 
-        available_features.remove(best_feature)
-
-        # Updating Node 
+        # Commit to the split
         node.feature = best_feature
 
+        # Compute child indices (guaranteed non-empty)
+        left_indices = (X[:, best_feature] == 0) & indices
+        right_indices = (X[:, best_feature] == 1) & indices
 
-        left_indices = X[:, best_feature] == 0 
-        right_indices = X[:, best_feature] == 1
+        # Create child nodes
+        node.left_node = Node()
+        node.right_node = Node()
 
-        left_indices = left_indices & indices
-        right_indices = right_indices & indices
+        # Recurse with reduced feature set
+        self.build_tree(X, y, indices=left_indices, available_features=child_features, node=node.left_node)
+        self.build_tree(X, y, indices=right_indices, available_features=child_features, node=node.right_node)
 
-        left_values = np.unique(y[left_indices])
-        right_values = np.unique(y[right_indices])
 
-        # 1. Avoiding empty subsets creating new None nodes
-        # Left/Right Subset contains no values  
-        if len(left_values) == 0 or len(right_values) == 0:
-            node.value = self._most_frequent_element(y[indices])
-            return  
-        else: 
-            node.left_node = Node()
-            node.right_node = Node()
-            self.build_tree(X, y, indices=left_indices, available_features=available_features.copy(), node=node.left_node)
-            self.build_tree(X, y, indices=right_indices, available_features=available_features.copy(), node=node.right_node)
-        
+    def train(self, X, y): 
+        # Validate training data 
+        self._validate_input(X,y)
+
+        m,n = X.shape
+        starting_indices = [True for i in range(m)]
+        available_features = [i for i in range(n)]
+        root_node = Node() 
+
+        # start building the Tree
+        print("Start building the Tree")
+        self.build_tree(X, y, indices=starting_indices, available_features=available_features, node=root_node)
+        self.root_node = root_node
+
+    def print_tree(self):
+        lines, *_ = self._display_aux(self.root_node)
+        for line in lines:
+            print(line)     
