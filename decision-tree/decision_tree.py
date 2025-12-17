@@ -177,38 +177,8 @@ class DecisionTree:
 
         return lines, n + m + len(s), max(p, q) + 2, n + len(s) // 2
 
-
-    def build_tree(self, X, y, indices, available_features, node):
-        # Terminating Conditions 
-
-        values = np.unique(y[indices])
-
-        # 1. No values 
-        if len(values) == 0: 
-            return 
-        
-        # 2. Pure Node 
-        if len(values) == 1:
-            node.value = values[0]
-            return
-
-        # 2. Available Features 
-        if len(available_features) == 0: 
-            # Get unique values and their counts
-            print("y_indices = ", y[indices])
-            unique_vals, counts = np.unique(y[indices], return_counts=True)
-            print("unique_vals:", unique_vals)
-            print("counts:", counts)
-            # Find the index of the maximum count
-            max_count_index = np.argmax(counts)
-
-            # Get the most frequent element
-            most_frequent_element = unique_vals[max_count_index]
-            node.value = most_frequent_element
-
-            return 
-            
-        max_info_gain = float("-inf")
+    def _find_best_split(self, X, y, indices, available_features):
+        max_info_gain = 0
         best_feature = None 
 
         # Find best feature for current Node 
@@ -219,18 +189,49 @@ class DecisionTree:
                 max_info_gain = info_gain
                 best_feature = feature 
 
-        # Printing Stage 
-        print("available_features :", available_features)
-        print("Choosen feature: ", best_feature)
-        print("----------------")
+        return max_info_gain, best_feature
+    
+
+    def _most_frequent_element(self, x): 
+        # Get unique values and their counts
+            unique_vals, counts = np.unique(x, return_counts=True)
+ 
+            # Find the index of the maximum count
+            max_count_index = np.argmax(counts)
+
+            # Get the most frequent element
+            most_frequent_element = unique_vals[max_count_index]
+
+            return most_frequent_element
+    
+
+    def build_tree(self, X, y, indices, available_features, node):
+        
+        values = np.unique(y[indices])
+        if len(values) == 0: 
+            return 
+        
+        # 2. Pure Node 
+        if len(values) == 1:
+            node.value = values[0]
+            return
+
+        # 2. Available Features 
+            
+        # Find best feature for current Node 
+        max_info_gain, best_feature = self._find_best_split(X, y, indices, available_features)
+
+        # No information gain from any feature
+        if len(available_features) == 0 or max_info_gain == 0: 
+            node.value = self.most_frequent_element(y[indices])
+            return
 
         # Removing used feature from the list 
         available_features.remove(best_feature)
 
         # Updating Node 
         node.feature = best_feature
-        node.left_node = Node()
-        node.right_node = Node()
+
 
         left_indices = X[:, best_feature] == 0 
         right_indices = X[:, best_feature] == 1
@@ -238,12 +239,17 @@ class DecisionTree:
         left_indices = left_indices & indices
         right_indices = right_indices & indices
 
-        print("Left Tree")
-        print("indices            :", indices)
-        print("left_indices       :", left_indices) 
-        self.build_tree(X, y, indices=left_indices, available_features=available_features.copy(), node=node.left_node)
-    
-        print("Right Tree")
-        print("indices            :", indices)
-        print("right_indices      :", right_indices)
-        self.build_tree(X, y, indices=right_indices, available_features=available_features.copy(), node=node.right_node)
+        left_values = np.unique(y[left_indices])
+        right_values = np.unique(y[right_indices])
+
+        # 1. Avoiding empty subsets creating new None nodes
+        # Left/Right Subset contains no values  
+        if len(left_values) == 0 or len(right_values) == 0:
+            node.value = self._most_frequent_element(y[indices])
+            return  
+        else: 
+            node.left_node = Node()
+            node.right_node = Node()
+            self.build_tree(X, y, indices=left_indices, available_features=available_features.copy(), node=node.left_node)
+            self.build_tree(X, y, indices=right_indices, available_features=available_features.copy(), node=node.right_node)
+        
