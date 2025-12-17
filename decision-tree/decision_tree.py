@@ -190,6 +190,9 @@ class DecisionTree:
     
     def build_tree(self, X, y, indices, available_features, node, current_depth = 0):
         
+        # Incrementing current depth  
+        current_depth += 1 
+
         values = np.unique(y[indices])
 
         # Find best feature for current Node 
@@ -222,8 +225,16 @@ class DecisionTree:
         node.right_node = Node()
 
         # Recurse with reduced feature set
-        self.build_tree(X, y, indices=left_indices, available_features=child_features, node=node.left_node)
-        self.build_tree(X, y, indices=right_indices, available_features=child_features, node=node.right_node)
+        self.build_tree(X, y, indices=left_indices, 
+                        available_features=child_features,
+                        node=node.left_node, 
+                        current_depth=current_depth
+                        )
+        self.build_tree(X, y, indices=right_indices,
+                        available_features=child_features, 
+                        node=node.right_node, 
+                        current_depth=current_depth
+                        )
 
 
     def train(self, X, y): 
