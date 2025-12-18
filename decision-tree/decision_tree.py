@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd 
-from sklearn.preprocessing import OneHotEncoder
 from node import Node
+from multiprocessing import Pool
+
 
 class DecisionTree:
     def __init__(self, max_depth=None, impurity_metric="entropy"):
@@ -18,7 +19,7 @@ class DecisionTree:
     
     def _validate_input(self, X, y):
         
-        # Convert data to numpy arrays 
+        # Convert data to numpy arrays
         if isinstance(X, pd.DataFrame):
             X = X.to_numpy()
         
@@ -188,7 +189,7 @@ class DecisionTree:
 
             return most_frequent_element
     
-    def build_tree(self, X, y, indices, available_features, node, current_depth = 0):
+    def _build_tree(self, X, y, indices, available_features, node, current_depth = 0):
         
         # Incrementing current depth  
         current_depth += 1 
@@ -225,16 +226,27 @@ class DecisionTree:
         node.right_node = Node()
 
         # Recurse with reduced feature set
-        self.build_tree(X, y, indices=left_indices, 
+        self._build_tree(X, y, indices=left_indices, 
                         available_features=child_features,
                         node=node.left_node, 
                         current_depth=current_depth
                         )
-        self.build_tree(X, y, indices=right_indices,
+        self._build_tree(X, y, indices=right_indices,
                         available_features=child_features, 
                         node=node.right_node, 
                         current_depth=current_depth
                         )
+
+    def _predict_single_example(self, x, node): 
+        
+        if node.left_node != None and node.right_node != None: 
+            if x[node.feature] == 0: 
+                return self._predict_single_example(x, node.left_node)
+            else:
+                return self._predict_single_example(x, node.right_node)
+
+        else: 
+            return node.value 
 
 
     def train(self, X, y): 
@@ -248,8 +260,18 @@ class DecisionTree:
 
         # start building the Tree
         print("Start building the Tree")
-        self.build_tree(X, y, indices=starting_indices, available_features=available_features, node=root_node)
+        self._build_tree(X, y, indices=starting_indices, available_features=available_features, node=root_node)
         self.root_node = root_node
+
+
+    def predict(self, X): 
+        # Validate inputs 
+        y_pred = np.array([None for _ in X])
+
+        for x in X: 
+            y_pred = self._predict_single_example(x, self.root_node)
+
+        return y_pred 
 
     def print_tree(self):
         lines, *_ = self._display_aux(self.root_node)
