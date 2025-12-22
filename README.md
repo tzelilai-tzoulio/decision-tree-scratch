@@ -77,18 +77,6 @@ These limitations are documented as part of the learning process.
 
 ---
 
-## Comparison with scikit-learn
-
-Compared to `sklearn.tree.DecisionTreeClassifier`, this implementation:
-
-- Focuses on transparency rather than performance
-- Omits advanced optimizations and pruning strategies
-- Uses simpler data structures
-- Is not intended for production use
-
-The goal is conceptual understanding, not feature parity.
-
----
 
 ## Usage
 
@@ -96,13 +84,17 @@ Example usage:
 
     from decision_tree import DecisionTree
 
-    model = DecisionTree(max_depth=3)
-    model.fit(X_train, y_train)
+    # Init and Train 
+    model = DecisionTree(max_depth=3, feature_mapping=["Feature_1", "Feature_2", ...])
+    model.train(X_train, y_train)
 
+    # Print Tree
+    model.print_tree(feature_mapping=True) # feature_mapping indicates real feature names need to be printed 
     predictions = model.predict(X_test)
 
-Input data is expected to be numerical and provided as NumPy arrays or equivalent structures.
-
+    # Save/Load model
+    model.save_to_file("file_path")
+    loaded_model = DecisionTree.load_from_file("file_path")
 ---
 
 ## Future Improvements
