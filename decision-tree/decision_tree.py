@@ -1,11 +1,10 @@
 import numpy as np
 import pandas as pd 
 from node import Node
-from multiprocessing import Pool
-
+import pickle 
 
 class DecisionTree:
-    def __init__(self, max_depth=None, impurity_metric="entropy"):
+    def __init__(self, max_depth=None, impurity_metric="entropy", feature_mapping=[]):
     
         if max_depth is not None and not isinstance(max_depth, int):
             raise TypeError("max_depth must be an integer or None")
@@ -13,10 +12,19 @@ class DecisionTree:
         if not impurity_metric in ["gini", "entropy"]:
             raise TypeError("impurity_metric is not valid. Choose gini or entropy")
         
+        if not isinstance(feature_mapping, list): 
+            raise TypeError("feature_mapping is not a list")
+        
+        if feature_mapping and not all(isinstance(x, str) for x in feature_mapping): 
+            raise TypeError("Insert feature names in type: str")
+        
         self.impurity_metric = impurity_metric
         self.max_depth = max_depth
-        self.current_depth = 0 
-        self.root_node = None 
+        self.feature_mapping = feature_mapping
+        self.current_depth = 0
+        self.X_shape = (None, None) 
+        self.root_node = None # Node for Tree without Feature Names (named by column index)
+        self.root_node_f = None # Node for Tree with Feature Names
     
     def _validate_input(self, X, y):
         
@@ -46,6 +54,11 @@ class DecisionTree:
         if not np.issubdtype(X.dtype, np.number):
             raise ValueError("X contains non-numeric data. Convert or encode it first.")
         
+        # Check if feature_mapping contains enough str values as features presented in X
+        self.X_shape = X.shape
+        if self.feature_mapping and not len(self.feature_mapping) == self.X_shape[1]:
+            raise ValueError("Not enough feature names in feature_mapping")
+        
     def _identify_columns(self, X):
         
         m,n = X.shape
@@ -73,6 +86,21 @@ class DecisionTree:
 
         return 1 - np.sum(p ** 2)
     
+    def _feature_mapping(self, root_node, root_node_f): 
+        
+        if isinstance(root_node.feature, int): 
+            root_node_f.feature = self.feature_mapping[root_node.feature]
+            
+            if root_node.left_node is not None: 
+                root_node_f.left_node = Node()
+            if root_node.right_node is not None: 
+                root_node_f.right_node = Node()
+
+        else:
+            root_node_f.value = root_node.value
+            return 
+        self._feature_mapping(root_node.left_node, root_node_f.left_node)
+        self._feature_mapping(root_node.right_node, root_node_f.right_node)
 
     def _cal_cat_entropy(self, y, indices): 
 
@@ -267,22 +295,49 @@ class DecisionTree:
 
         else: 
             return node.value 
-
-
+    
+    def save_to_file(self, file_path="./decision_tree_model.txt"):
+        try:
+                    with open(file_path, 'wb') as f:
+                        pickle.dump(self, f)
+                    print(f"Object successfully saved to {file_path}")
+        except Exception as e:
+            print(f"An error occurred during saving: {e}")
+    
+    @classmethod
+    def load_from_file(cls, filepath):
+        """
+        Loads a class instance from a file.
+        The file is opened in read-binary ('rb') mode.
+        Returns the reconstructed object.
+        """
+        try:
+            with open(filepath, 'rb') as f:
+                loaded_object = pickle.load(f)
+            print(f"Object successfully loaded from {filepath}")
+            return loaded_object
+        except FileNotFoundError:
+            print(f"Error: The file {filepath} was not found.")
+            return None
+        except Exception as e:
+            print(f"An error occurred during loading: {e}")
+            return None
+        
     def train(self, X, y): 
         # Validate training data 
         self._validate_input(X,y)
 
         m,n = X.shape
         starting_indices = [True for i in range(m)]
+
         available_features = [i for i in range(n)]
+        
         root_node = Node() 
 
         # start building the Tree
         print("Start building the Tree")
         self._build_tree(X, y, indices=starting_indices, available_features=available_features, node=root_node)
         self.root_node = root_node
-
 
     def predict(self, X): 
         # Validate inputs 
@@ -293,7 +348,16 @@ class DecisionTree:
 
         return y_pred 
 
-    def print_tree(self):
-        lines, *_ = self._display_aux(self.root_node)
-        for line in lines:
-            print(line)     
+    def print_tree(self, feature_mapping=False):
+
+        if feature_mapping: 
+            self.root_node_f = Node()
+            self._feature_mapping(self.root_node, self.root_node_f)
+            
+            lines, *_ = self._display_aux(self.root_node_f)
+            for line in lines:
+                print(line)
+        else: 
+            lines, *_ = self._display_aux(self.root_node)
+            for line in lines:
+                print(line)     
