@@ -4,7 +4,7 @@ A from-scratch implementation of a Decision Tree classifier in Python, built to 
 
 ---
 
-## Motivation & Learning Goals
+## Motivation & Learning Goals :mortar_board:
 
 The goal of this project is educational.
 
