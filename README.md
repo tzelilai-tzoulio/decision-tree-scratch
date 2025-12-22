@@ -1,4 +1,4 @@
-# Decision Tree From Scratch
+# :wrench: Decision Tree From Scratch :hammer:
 
 A from-scratch implementation of a Decision Tree classifier in Python, built to understand the internal mechanics of tree-based machine learning models.
 
