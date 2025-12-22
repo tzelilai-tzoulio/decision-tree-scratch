@@ -13,6 +13,7 @@ class DecisionTree:
         if not impurity_metric in ["gini", "entropy"]:
             raise TypeError("impurity_metric is not valid. Choose gini or entropy")
         
+        self.impurity_metric = impurity_metric
         self.max_depth = max_depth
         self.current_depth = 0 
         self.root_node = None 
@@ -62,7 +63,17 @@ class DecisionTree:
                 cat.append(i)
 
         return num, cat
-        
+    
+    def _cal_cat_gini(self, y, indices): 
+
+        subset = y[indices]
+
+        _, counts = np.unique(subset, return_counts=True)
+        p = counts / counts.sum() 
+
+        return -(p**2).sum()
+    
+
     def _cal_cat_entropy(self, y, indices): 
 
         subset = y[indices]
@@ -83,10 +94,19 @@ class DecisionTree:
         left_indices = left_indices & indices 
         right_indices = right_indices & indices 
 
-        H_parent = self._cal_cat_entropy(y, indices)
-        H_left = self._cal_cat_entropy(y, left_indices)
-        H_right = self._cal_cat_entropy(y, right_indices)
-
+        if self.impurity_metric == "entropy":
+            H_parent = self._cal_cat_entropy(y, indices)
+            H_left = self._cal_cat_entropy(y, left_indices)
+            H_right = self._cal_cat_entropy(y, right_indices)
+        
+        elif self.impurity_metric == "gini":
+            H_parent = self._cal_cat_gini(y, indices)
+            H_left = self._cal_cat_gini(y, left_indices)
+            H_right = self._cal_cat_gini(y, right_indices)
+            
+        else: 
+            raise ValueError("No impurity metric provided")
+        
         w_left = left_indices.sum()/len(indices)
         w_right = right_indices.sum()/len(indices)
 
