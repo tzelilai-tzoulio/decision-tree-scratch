@@ -71,7 +71,7 @@ class DecisionTree:
         _, counts = np.unique(subset, return_counts=True)
         p = counts / counts.sum() 
 
-        return -(p**2).sum()
+        return 1 - np.sum(p ** 2)
     
 
     def _cal_cat_entropy(self, y, indices): 
@@ -103,7 +103,7 @@ class DecisionTree:
             H_parent = self._cal_cat_gini(y, indices)
             H_left = self._cal_cat_gini(y, left_indices)
             H_right = self._cal_cat_gini(y, right_indices)
-            
+
         else: 
             raise ValueError("No impurity metric provided")
         
